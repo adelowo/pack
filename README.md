@@ -86,6 +86,10 @@ The `--buildpack` parameter can be
 - a URL to a `.tgz` file, or
 - the ID of a buildpack located in a builder
 
+> Multiple buildpacks can be specified, in order, by:
+> - supplying `--buildpack` multiple times, or
+> - supplying a comma-separated list to `--buildpack` (without spaces)
+
 ### Building explained
 
 ![build diagram](docs/build.svg)
@@ -210,23 +214,25 @@ As mentioned [previously](#building-explained), a stack is associated with a bui
 `pack`'s configuration can be managed using the following commands:
 
 ```bash
-$ pack add-stack <stack-name> --build-image <build-image-name> --run-image <run-image-name1,run-image-name2,...>
+$ pack add-stack <stack-id> --build-image <build-image-name> --run-image <run-image-name1,run-image-name2,...>
 ```
 
 ```bash
-$ pack update-stack <stack-name> --build-image <build-image-name> --run-image <run-image-name1,run-image-name2,...>
+$ pack update-stack <stack-id> --build-image <build-image-name> --run-image <run-image-name1,run-image-name2,...>
 ```
 
 ```bash
-$ pack delete-stack <stack-name>
+$ pack delete-stack <stack-id>
 ```
 
 ```bash
-$ pack set-default-stack <stack-name>
+$ pack set-default-stack <stack-id>
 ```
 
 > Technically, a stack can be associated with multiple run images, as a variant is needed for each registry to
 > which an app image might be published when using `--publish`.
+>
+> Multiple run images can be specified using the syntax above, or by supplying `--run-image` multiple times.
 
 ### Example: Adding a stack
 
@@ -239,7 +245,7 @@ $ pack add-stack org.example.my-stack --build-image my-stack/build --run-image m
 
 ### Example: Updating a stack
 
-In this example, an existing stack called `org.example.my-stack` is updated with a new build image `my-stack/build:v2`
+In this example, an existing stack `org.example.my-stack` is updated with a new build image `my-stack/build:v2`
 and a new run image `my-stack/run:v2`.
 
 ```bash
@@ -265,7 +271,7 @@ $ pack set-default-stack org.example.my-stack
 
 ### Listing stacks
 
-To inspect available stacks and their names (denoted by `id`), run:
+To inspect available stacks and their IDs (denoted by `id`), run:
 
 ```bash
 $ cat ~/.pack/config.toml
@@ -274,12 +280,12 @@ $ cat ~/.pack/config.toml
 
 [[stacks]]
   id = "io.buildpacks.stacks.bionic"
-  build-images = ["packs/build"]
+  build-image = "packs/build"
   run-images = ["packs/run"]
 
 [[stacks]]
   id = "org.example.my-stack"
-  build-images = ["my-stack/build"]
+  build-image = "my-stack/build"
   run-images = ["my-stack/run"]
 
 ...
