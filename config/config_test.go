@@ -45,7 +45,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, string(b), strings.TrimSpace(`
 [[stacks]]
   id = "io.buildpacks.stacks.bionic"
-  build-images = ["packs/build:v3alpha2"]
+  build-image = "packs/build:v3alpha2"
   run-images = ["packs/run:v3alpha2"]
 `))
 
@@ -82,7 +82,7 @@ default-builder = "some/builder"
 
 [[stacks]]
   id = "some.user.provided.stack"
-  build-images = ["some/build"]
+  build-image = "some/build"
   run-images = ["some/run"]
 `))
 			})
@@ -98,13 +98,13 @@ default-builder = "some/builder"
 				h.AssertContains(t, string(b), strings.TrimSpace(`
 [[stacks]]
   id = "io.buildpacks.stacks.bionic"
-  build-images = ["packs/build:v3alpha2"]
+  build-image = "packs/build:v3alpha2"
   run-images = ["packs/run:v3alpha2"]
 `))
 				h.AssertContains(t, string(b), strings.TrimSpace(`
 [[stacks]]
   id = "some.user.provided.stack"
-  build-images = ["some/build"]
+  build-image = "some/build"
   run-images = ["some/run"]
 `))
 				h.AssertEq(t, subject.DefaultStackID, "some.user.provided.stack")
@@ -133,7 +133,7 @@ default-builder = "some/builder"
 				w.Write([]byte(`
 [[stacks]]
   id = "io.buildpacks.stacks.bionic"
-  build-images = ["some-other/build"]
+  build-image = "some-other/build"
   run-images = ["some-other/run", "packs/run:v3alpha2"]
 `))
 			})
@@ -148,7 +148,7 @@ default-builder = "some/builder"
 				h.AssertContains(t, string(b), strings.TrimSpace(`
 [[stacks]]
   id = "io.buildpacks.stacks.bionic"
-  build-images = ["some-other/build"]
+  build-image = "some-other/build"
   run-images = ["some-other/run", "packs/run:v3alpha2"]
 `))
 
@@ -324,16 +324,16 @@ default-stack-id = "my.stack"
 		when("stack to be added is new", func() {
 			it("adds the stack and writes to file", func() {
 				err := subject.Add(config.Stack{
-					ID:          "new-stack",
-					BuildImages: []string{"neworg/build"},
-					RunImages:   []string{"neworg/run"},
+					ID:         "new-stack",
+					BuildImage: "neworg/build",
+					RunImages:  []string{"neworg/run"},
 				})
 				h.AssertNil(t, err)
 
 				stack, err := subject.Get("new-stack")
 				h.AssertNil(t, err)
 				h.AssertEq(t, stack.ID, "new-stack")
-				h.AssertEq(t, stack.BuildImages, []string{"neworg/build"})
+				h.AssertEq(t, stack.BuildImage, "neworg/build")
 				h.AssertEq(t, stack.RunImages, []string{"neworg/run"})
 
 				b, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
@@ -351,9 +351,9 @@ default-stack-id = "my.stack"
 				origSize := stat.Size()
 
 				err = subject.Add(config.Stack{
-					ID:          "my.stack",
-					BuildImages: []string{"neworg/build"},
-					RunImages:   []string{"neworg/run"},
+					ID:         "my.stack",
+					BuildImage: "neworg/build",
+					RunImages:  []string{"neworg/run"},
 				})
 				h.AssertNotNil(t, err)
 				h.AssertEq(t, err.Error(), `stack "my.stack" already exists`)
@@ -378,7 +378,7 @@ default-stack-id = "stack-1"
   id = "stack-1"
 [[stacks]]
   id = "my.stack"
-	build-images = ["packs/build:v3alpha2"]
+	build-image = "packs/build:v3alpha2"
 	run-images = ["packs/run:v3alpha2"]
 [[stacks]]
   id = "stack-3"
@@ -391,8 +391,8 @@ default-stack-id = "stack-1"
 		when("stack to be updated exists", func() {
 			it("updates the stack and writes the file", func() {
 				err := subject.Update("my.stack", config.Stack{
-					BuildImages: []string{"packs/build-2", "fred"},
-					RunImages:   []string{"packs/run-2", "jane"},
+					BuildImage: "packs/build-2",
+					RunImages:  []string{"packs/run-2", "jane"},
 				})
 				h.AssertNil(t, err)
 
@@ -408,12 +408,12 @@ default-stack-id = "stack-1"
 
 			it("updates only the fields entered", func() {
 				err := subject.Update("my.stack", config.Stack{
-					BuildImages: []string{"packs/build-2"},
+					BuildImage: "packs/build-2",
 				})
 				h.AssertNil(t, err)
 				stack, err := subject.Get("my.stack")
 				h.AssertNil(t, err)
-				h.AssertEq(t, stack.BuildImages, []string{"packs/build-2"})
+				h.AssertEq(t, stack.BuildImage, "packs/build-2")
 				h.AssertEq(t, stack.RunImages, []string{"packs/run:v3alpha2"})
 
 				err = subject.Update("my.stack", config.Stack{
@@ -422,7 +422,7 @@ default-stack-id = "stack-1"
 				h.AssertNil(t, err)
 				stack, err = subject.Get("my.stack")
 				h.AssertNil(t, err)
-				h.AssertEq(t, stack.BuildImages, []string{"packs/build-2"})
+				h.AssertEq(t, stack.BuildImage, "packs/build-2")
 				h.AssertEq(t, stack.RunImages, []string{"packs/run-3"})
 			})
 		})
@@ -430,8 +430,8 @@ default-stack-id = "stack-1"
 		when("stack to be updated is NOT in file", func() {
 			it("errors and leaves file unchanged", func() {
 				err := subject.Update("other.stack", config.Stack{
-					BuildImages: []string{"packs/build-2"},
-					RunImages:   []string{"packs/run-2"},
+					BuildImage: "packs/build-2",
+					RunImages:  []string{"packs/run-2"},
 				})
 				h.AssertNotNil(t, err)
 				h.AssertEq(t, err.Error(), `Missing stack: stack with id "other.stack" not found in pack config.toml`)

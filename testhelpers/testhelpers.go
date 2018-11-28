@@ -230,7 +230,7 @@ func ConfigurePackHome(t *testing.T, packHome, registryPort string) {
 
 				[[stacks]]
 				  id = "io.buildpacks.stacks.bionic"
-				  build-images = ["%s"]
+				  build-image = "%s"
 				  run-images = ["%s"]
 			`, DefaultBuilderImage(t, registryPort), DefaultBuildImage(t, registryPort), DefaultRunImage(t, registryPort))), 0666))
 }

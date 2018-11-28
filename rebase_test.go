@@ -42,14 +42,14 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 					DefaultStackID: "some.default.stack",
 					Stacks: []config.Stack{
 						{
-							ID:          "some.default.stack",
-							BuildImages: []string{"default/build", "registry.com/build/image"},
-							RunImages:   []string{"default/run"},
+							ID:         "some.default.stack",
+							BuildImage: "default/build",
+							RunImages:  []string{"default/run"},
 						},
 						{
-							ID:          "some.other.stack",
-							BuildImages: []string{"other/build"},
-							RunImages:   []string{"other/run"},
+							ID:         "some.other.stack",
+							BuildImage: "other/build",
+							RunImages:  []string{"other/run"},
 						},
 					},
 				},

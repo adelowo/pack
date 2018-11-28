@@ -97,7 +97,6 @@ func (f *RebaseFactory) Rebase(cfg RebaseConfig) error {
 	return nil
 }
 
-// TODO copied from create_builder.go (called baseImage, and using baseImage (not run))
 func (f *RebaseFactory) runImageName(stackID, repoName string) (string, error) {
 	stack, err := f.Config.Get(stackID)
 	if err != nil {

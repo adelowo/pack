@@ -166,14 +166,7 @@ func (f *BuilderFactory) baseImageName(stackID, repoName string) (string, error)
 	if err != nil {
 		return "", err
 	}
-	if len(stack.BuildImages) == 0 {
-		return "", fmt.Errorf(`Invalid stack: stack "%s" requires at least one build image`, stack.ID)
-	}
-	registry, err := config.Registry(repoName)
-	if err != nil {
-		return "", err
-	}
-	return config.ImageByRegistry(registry, stack.BuildImages)
+	return stack.BuildImage, nil
 }
 
 func (f *BuilderFactory) Create(config BuilderConfig) error {

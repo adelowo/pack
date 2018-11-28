@@ -486,9 +486,9 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 			var config struct {
 				Stacks []struct {
-					ID          string   `toml:"id"`
-					BuildImages []string `toml:"build-images"`
-					RunImages   []string `toml:"run-images"`
+					ID         string   `toml:"id"`
+					BuildImage string   `toml:"build-image"`
+					RunImages  []string `toml:"run-images"`
 				} `toml:"stacks"`
 			}
 			_, err := toml.DecodeFile(filepath.Join(packHome, "config.toml"), &config)
@@ -496,7 +496,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 			stack := config.Stacks[len(config.Stacks)-1]
 			h.AssertEq(t, stack.ID, "my.custom.stack")
-			h.AssertEq(t, stack.BuildImages, []string{"my-org/build"})
+			h.AssertEq(t, stack.BuildImage, "my-org/build")
 			h.AssertEq(t, stack.RunImages, []string{"my-org/run"})
 		})
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
@@ -504,9 +504,9 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 	when("pack update-stack", func() {
 		type config struct {
 			Stacks []struct {
-				ID          string   `toml:"id"`
-				BuildImages []string `toml:"build-images"`
-				RunImages   []string `toml:"run-images"`
+				ID         string   `toml:"id"`
+				BuildImage string   `toml:"build-image"`
+				RunImages  []string `toml:"run-images"`
 			} `toml:"stacks"`
 		}
 
@@ -520,7 +520,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("updates an existing custom stack in ~/.pack/config.toml", func() {
-			cmd := exec.Command(pack, "update-stack", "my.custom.stack", "--run-image", "my-org/run-2", "--run-image", "my-org/run-3", "--build-image", "my-org/build-2", "--build-image", "my-org/build-3")
+			cmd := exec.Command(pack, "update-stack", "my.custom.stack", "--run-image", "my-org/run-2", "--run-image", "my-org/run-3", "--build-image", "my-org/build-2")
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
@@ -534,7 +534,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 			stack := config.Stacks[len(config.Stacks)-1]
 			h.AssertEq(t, stack.ID, "my.custom.stack")
-			h.AssertEq(t, stack.BuildImages, []string{"my-org/build-2", "my-org/build-3"})
+			h.AssertEq(t, stack.BuildImage, "my-org/build-2")
 			h.AssertEq(t, stack.RunImages, []string{"my-org/run-2", "my-org/run-3"})
 		})
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
@@ -576,9 +576,9 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 	when("pack delete-stack", func() {
 		type config struct {
 			Stacks []struct {
-				ID          string   `toml:"id"`
-				BuildImages []string `toml:"build-images"`
-				RunImages   []string `toml:"run-images"`
+				ID         string   `toml:"id"`
+				BuildImage string   `toml:"build-image"`
+				RunImages  []string `toml:"run-images"`
 			} `toml:"stacks"`
 		}
 		containsStack := func(c config, stackID string) bool {
@@ -647,8 +647,6 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-// TODO: fetchHostPort, proxyDockerHostPort, and runRegistry are duplicated
-// here and in build_test.go. Find a common spot for them.
 func fetchHostPort(t *testing.T, dockerID string) string {
 	t.Helper()
 

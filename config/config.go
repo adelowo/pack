@@ -19,7 +19,8 @@ type Config struct {
 
 type Stack struct {
 	ID          string   `toml:"id"`
-	BuildImages []string `toml:"build-images"`
+	BuildImage  string   `toml:"build-image"`
+	BuildImages []string `toml:"build-images,omitempty"` // Deprecated
 	RunImages   []string `toml:"run-images"`
 }
 
@@ -45,9 +46,9 @@ func New(path string) (*Config, error) {
 		config.DefaultBuilder = "packs/samples:v3alpha2"
 	}
 	upgradeStack(config, Stack{
-		ID:          "io.buildpacks.stacks.bionic",
-		BuildImages: []string{"packs/build:v3alpha2"},
-		RunImages:   []string{"packs/run:v3alpha2"},
+		ID:         "io.buildpacks.stacks.bionic",
+		BuildImage: "packs/build:v3alpha2",
+		RunImages:  []string{"packs/run:v3alpha2"},
 	})
 
 	config.configPath = configPath
@@ -71,6 +72,17 @@ func (c *Config) save() error {
 	return toml.NewEncoder(w).Encode(c)
 }
 
+// TODO: Eventually remove this, once most users are likely migrated
+func (c *Config) migrateBuildImagesToSingularBuildImage() {
+	for s := range c.Stacks {
+		stack := &c.Stacks[s]
+		if stack.BuildImage == "" {
+			stack.BuildImage = stack.BuildImages[0]
+		}
+		stack.BuildImages = nil
+	}
+}
+
 func previousConfig(path string) (*Config, error) {
 	configPath := filepath.Join(path, "config.toml")
 	config := &Config{}
@@ -82,12 +94,13 @@ func previousConfig(path string) (*Config, error) {
 }
 
 func upgradeStack(config *Config, stack Stack) {
+	// TODO: Eventually remove this, once most users are likely migrated
+	config.migrateBuildImagesToSingularBuildImage()
+
 	for _, stk := range config.Stacks {
 		if stk.ID == stack.ID {
-			for index, value := range stk.BuildImages {
-				if value == "packs/build" {
-					stk.BuildImages[index] = stack.BuildImages[0]
-				}
+			if stk.BuildImage == "packs/build" {
+				stk.BuildImage = stack.BuildImage
 			}
 
 			for index, value := range stk.RunImages {
@@ -121,14 +134,13 @@ func (c *Config) Add(stack Stack) error {
 	return c.save()
 }
 
-func (c *Config) Update(stackID string, stack Stack) error {
+func (c *Config) Update(stackID string, newStack Stack) error {
 	for i, stk := range c.Stacks {
 		if stk.ID == stackID {
-			if len(stack.BuildImages) > 0 {
-				stk.BuildImages = stack.BuildImages
-			}
-			if len(stack.RunImages) > 0 {
-				stk.RunImages = stack.RunImages
+			stk.BuildImage = newStack.BuildImage
+
+			if len(newStack.RunImages) > 0 {
+				stk.RunImages = newStack.RunImages
 			}
 			c.Stacks[i] = stk
 			return c.save()

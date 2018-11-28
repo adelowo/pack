@@ -16,11 +16,11 @@ import (
 
 type RunFlags struct {
 	BuildFlags BuildFlags
-	Port       string
+	Ports      []string
 }
 
 type RunConfig struct {
-	Port  string
+	Ports []string
 	Build Task
 	// All below are from BuildConfig
 	RepoName string
@@ -37,7 +37,7 @@ func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
 	}
 	rc := &RunConfig{
 		Build: bc,
-		Port:  f.Port,
+		Ports: f.Ports,
 		// All below are from BuildConfig
 		RepoName: bc.RepoName,
 		Cli:      bc.Cli,
@@ -49,7 +49,7 @@ func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
 	return rc, nil
 }
 
-func Run(appDir, buildImage, runImage, port string, makeStopCh func() <-chan struct{}) error {
+func Run(appDir, buildImage, runImage string, ports []string, makeStopCh func() <-chan struct{}) error {
 	bf, err := DefaultBuildFactory()
 	if err != nil {
 		return err
@@ -60,7 +60,7 @@ func Run(appDir, buildImage, runImage, port string, makeStopCh func() <-chan str
 			Builder:  buildImage,
 			RunImage: runImage,
 		},
-		Port: port,
+		Ports: ports,
 	})
 	if err != nil {
 		return err
@@ -77,13 +77,13 @@ func (r *RunConfig) Run(makeStopCh func() <-chan struct{}) error {
 	}
 
 	fmt.Println("*** RUNNING:")
-	if r.Port == "" {
-		r.Port, err = r.exposedPorts(ctx, r.RepoName)
+	if r.Ports == nil {
+		r.Ports, err = r.exposedPorts(ctx, r.RepoName)
 		if err != nil {
 			return err
 		}
 	}
-	exposedPorts, portBindings, err := parsePorts(r.Port)
+	exposedPorts, portBindings, err := parsePorts(r.Ports)
 	if err != nil {
 		return err
 	}
@@ -114,20 +114,19 @@ func (r *RunConfig) Run(makeStopCh func() <-chan struct{}) error {
 	return nil
 }
 
-func (r *RunConfig) exposedPorts(ctx context.Context, imageID string) (string, error) {
+func (r *RunConfig) exposedPorts(ctx context.Context, imageID string) ([]string, error) {
 	i, _, err := r.Cli.ImageInspectWithRaw(ctx, imageID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	ports := []string{}
+	var ports []string
 	for port := range i.Config.ExposedPorts {
 		ports = append(ports, port.Port())
 	}
-	return strings.Join(ports, ","), nil
+	return ports, nil
 }
 
-func parsePorts(port string) (nat.PortSet, nat.PortMap, error) {
-	ports := strings.Split(port, ",")
+func parsePorts(ports []string) (nat.PortSet, nat.PortMap, error) {
 	for i, p := range ports {
 		p = strings.TrimSpace(p)
 		if _, err := strconv.Atoi(p); err == nil {

@@ -20,21 +20,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Version = "0.0.0"
-var noTimestamps, verbose bool
-var logger *pack.Logger
+var (
+	Version      = "0.0.0"
+	noTimestamps bool
+	logger       *pack.Logger
+)
 
 func main() {
 	rootCmd := &cobra.Command{
 		Use: "pack",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			logger = pack.NewLogger(os.Stdout, os.Stderr, verbose, noTimestamps)
+			// TODO: Create CLI flag to enable/disable verbosity (hard-code to `true` for now)
+			logger = pack.NewLogger(os.Stdout, os.Stderr, true, noTimestamps)
 		},
 	}
 	rootCmd.PersistentFlags().BoolVar(&color.NoColor, "no-color", false, "Disable color output")
 	rootCmd.PersistentFlags().BoolVar(&noTimestamps, "no-timestamps", false, "Disable timestamps in output")
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Show verbose output")
-	rootCmd.Flags().BoolP("help", "h", false, "Help for pack")
+	addHelpFlag(rootCmd, "pack")
 	for _, f := range []func() *cobra.Command{
 		buildCommand,
 		runCommand,
@@ -99,8 +101,7 @@ func runCommand() *cobra.Command {
 	}
 
 	buildCommandFlags(cmd, &runFlags.BuildFlags)
-	// TODO: AM: Convert ports to array
-	cmd.Flags().StringVar(&runFlags.Port, "port", "", "comma separated ports to publish, defaults to ports exposed by the container")
+	cmd.Flags().StringSliceVar(&runFlags.Ports, "port", nil, "Port to publish (defaults to port(s) exposed by container)"+multiValueHelp("port"))
 	addHelpFlag(cmd, "run")
 	return cmd
 }
@@ -109,7 +110,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *pack.BuildFlags) {
 	cmd.Flags().StringVarP(&buildFlags.AppDir, "path", "p", "", "Path to app dir (defaults to current working directory)")
 	cmd.Flags().StringVar(&buildFlags.Builder, "builder", "packs/samples", "Builder")
 	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "Run image (defaults to default stack's run image)")
-	cmd.Flags().StringVar(&buildFlags.EnvFile, "env-file", "", "env file")
+	cmd.Flags().StringVar(&buildFlags.EnvFile, "env-file", "", "Environment variables file")
 	cmd.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "Skip pulling images before use")
 	cmd.Flags().StringSliceVar(&buildFlags.Buildpacks, "buildpack", nil, "Buildpack ID, path to directory, or path/URL to .tgz file"+multiValueHelp("buildpack"))
 }
@@ -186,7 +187,7 @@ func createBuilderCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling stack image before use")
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "builder-config", "b", "", "Path to builder TOML file (required)")
 	cmd.MarkFlagRequired("builder-config")
-	cmd.Flags().StringVarP(&flags.StackID, "stack", "s", "", "Stack ID (defaults to stack configured by 'set-default-stack')")
+	cmd.Flags().StringVarP(&flags.StackID, "stack", "s", "", "Stack ID (defaults to stack configured by `set-default-stack`)")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	addHelpFlag(cmd, "create-builder")
 	return cmd
