@@ -30,7 +30,7 @@ func testLogger(t *testing.T, when spec.G, it spec.S) {
 	when("debug", func() {
 		when("logger has debug enabled", func() {
 			it.Before(func() {
-				logger = pack.NewLogger(&outBuf, &errBuff, true, true)
+				logger = pack.NewLogger(&outBuf, &errBuff, true, false)
 			})
 
 			it("shows verbose output", func() {
@@ -42,7 +42,7 @@ func testLogger(t *testing.T, when spec.G, it spec.S) {
 
 		when("logger has debug disabled", func() {
 			it.Before(func() {
-				logger = pack.NewLogger(&outBuf, &errBuff, false, true)
+				logger = pack.NewLogger(&outBuf, &errBuff, false, false)
 			})
 
 			it("does not show verbose output", func() {
@@ -56,7 +56,7 @@ func testLogger(t *testing.T, when spec.G, it spec.S) {
 	when("timestamps", func() {
 		when("logger has timestamps enabled", func() {
 			it.Before(func() {
-				logger = pack.NewLogger(&outBuf, &errBuff, false, false)
+				logger = pack.NewLogger(&outBuf, &errBuff, false, true)
 			})
 
 			it("prefixes logging with timestamp", func() {
@@ -69,7 +69,7 @@ func testLogger(t *testing.T, when spec.G, it spec.S) {
 
 		when("logger has timestamps disabled", func() {
 			it.Before(func() {
-				logger = pack.NewLogger(&outBuf, &errBuff, false, true)
+				logger = pack.NewLogger(&outBuf, &errBuff, false, false)
 			})
 
 			it("does not prefix logging with timestamp", func() {
@@ -82,7 +82,7 @@ func testLogger(t *testing.T, when spec.G, it spec.S) {
 
 	when("styling", func() {
 		it.Before(func() {
-			logger = pack.NewLogger(&outBuf, &errBuff, false, true)
+			logger = pack.NewLogger(&outBuf, &errBuff, false, false)
 		})
 
 		when("#Info", func() {

@@ -13,13 +13,13 @@ type Logger struct {
 	err     *log.Logger
 }
 
-func NewLogger(stdout, stderr io.Writer, verbose, noTimestamps bool) *Logger {
-	flags := log.LstdFlags
-	prefix := style.Separator("| ")
+func NewLogger(stdout, stderr io.Writer, verbose, timestamps bool) *Logger {
+	flags := 0
+	prefix := ""
 
-	if noTimestamps {
-		flags = 0
-		prefix = ""
+	if timestamps {
+		flags = log.LstdFlags
+		prefix = style.Separator("| ")
 	}
 
 	return &Logger{

@@ -2,7 +2,7 @@ package style
 
 import "github.com/fatih/color"
 
-var Emphasized = color.New(color.FgHiWhite, color.Bold).SprintFunc()
+var Identifier = color.New(color.FgHiWhite, color.Bold).SprintFunc()
 
 var Tip = color.New(color.FgHiGreen, color.Bold).SprintfFunc()
 

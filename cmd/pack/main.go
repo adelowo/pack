@@ -21,9 +21,9 @@ import (
 )
 
 var (
-	Version      = "0.0.0"
-	noTimestamps bool
-	logger       *pack.Logger
+	Version           = "0.0.0"
+	disableTimestamps bool
+	logger            *pack.Logger
 )
 
 func main() {
@@ -31,11 +31,11 @@ func main() {
 		Use: "pack",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			// TODO: Create CLI flag to enable/disable verbosity (hard-code to `true` for now)
-			logger = pack.NewLogger(os.Stdout, os.Stderr, true, noTimestamps)
+			logger = pack.NewLogger(os.Stdout, os.Stderr, true, !disableTimestamps)
 		},
 	}
 	rootCmd.PersistentFlags().BoolVar(&color.NoColor, "no-color", false, "Disable color output")
-	rootCmd.PersistentFlags().BoolVar(&noTimestamps, "no-timestamps", false, "Disable timestamps in output")
+	rootCmd.PersistentFlags().BoolVar(&disableTimestamps, "no-timestamps", false, "Disable timestamps in output")
 	addHelpFlag(rootCmd, "pack")
 	for _, f := range []func() *cobra.Command{
 		buildCommand,
@@ -62,7 +62,7 @@ func buildCommand() *cobra.Command {
 		Use:   "build <image-name>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Generate app image from source code",
-		RunE: runE(func(cmd *cobra.Command, args []string) error {
+		RunE: interceptError(func(cmd *cobra.Command, args []string) error {
 			buildFlags.RepoName = args[0]
 			bf, err := pack.DefaultBuildFactory()
 			if err != nil {
@@ -87,7 +87,7 @@ func runCommand() *cobra.Command {
 		Use:   "run",
 		Args:  cobra.NoArgs,
 		Short: "Build and run app image (recommended for development only)",
-		RunE: runE(func(cmd *cobra.Command, args []string) error {
+		RunE: interceptError(func(cmd *cobra.Command, args []string) error {
 			bf, err := pack.DefaultBuildFactory()
 			if err != nil {
 				return err
@@ -121,7 +121,7 @@ func rebaseCommand() *cobra.Command {
 		Use:   "rebase <image-name>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Rebase app image with latest run image",
-		RunE: runE(func(cmd *cobra.Command, args []string) error {
+		RunE: interceptError(func(cmd *cobra.Command, args []string) error {
 			flags.RepoName = args[0]
 
 			imageFactory, err := image.DefaultFactory()
@@ -156,7 +156,7 @@ func createBuilderCommand() *cobra.Command {
 		Use:   "create-builder <image-name> --builder-config <builder-toml-path>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Create builder image",
-		RunE: runE(func(cmd *cobra.Command, args []string) error {
+		RunE: interceptError(func(cmd *cobra.Command, args []string) error {
 			flags.RepoName = args[0]
 
 			if runtime.GOOS == "windows" {
@@ -202,7 +202,7 @@ func addStackCommand() *cobra.Command {
 		Use:   "add-stack <stack-id> --build-image <build-image-name> --run-image <run-image-name>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Add stack to list of available stacks",
-		RunE: runE(func(cmd *cobra.Command, args []string) error {
+		RunE: interceptError(func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.NewDefault()
 			if err != nil {
 				return err
@@ -214,7 +214,7 @@ func addStackCommand() *cobra.Command {
 			}); err != nil {
 				return err
 			}
-			logger.Info("Stack %s added", style.Emphasized(args[0]))
+			logger.Info("Stack %s added", style.Identifier(args[0]))
 			return nil
 		}),
 	}
@@ -231,7 +231,7 @@ func setDefaultStackCommand() *cobra.Command {
 		Use:   "set-default-stack <stack-id>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Set default stack used by other commands",
-		RunE: runE(func(cmd *cobra.Command, args []string) error {
+		RunE: interceptError(func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.New(filepath.Join(os.Getenv("HOME"), ".pack"))
 			if err != nil {
 				return err
@@ -240,7 +240,7 @@ func setDefaultStackCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			logger.Info("Stack %s is now the default stack\n", style.Emphasized(args[0]))
+			logger.Info("Stack %s is now the default stack\n", style.Identifier(args[0]))
 			return nil
 		}),
 	}
@@ -253,7 +253,7 @@ func setDefaultBuilderCommand() *cobra.Command {
 		Use:   "set-default-builder <builder-name>",
 		Short: "Set default builder used by other commands",
 		Args:  cobra.ExactArgs(1),
-		RunE: runE(func(cmd *cobra.Command, args []string) error {
+		RunE: interceptError(func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.NewDefault()
 			if err != nil {
 				return err
@@ -262,7 +262,7 @@ func setDefaultBuilderCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			logger.Info("Stack %s is now the default builder\n", style.Emphasized(args[0]))
+			logger.Info("Stack %s is now the default builder\n", style.Identifier(args[0]))
 			return nil
 		}),
 	}
@@ -279,7 +279,7 @@ func updateStackCommand() *cobra.Command {
 		Use:   "update-stack <stack-id> --build-image <build-image-name> --run-image <run-image-name>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Update stack build and run images",
-		RunE: runE(func(cmd *cobra.Command, args []string) error {
+		RunE: interceptError(func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.NewDefault()
 			if err != nil {
 				return err
@@ -290,7 +290,7 @@ func updateStackCommand() *cobra.Command {
 			}); err != nil {
 				return err
 			}
-			logger.Info("Stack %s updated", style.Emphasized(args[0]))
+			logger.Info("Stack %s updated", style.Identifier(args[0]))
 			return nil
 		}),
 	}
@@ -307,7 +307,7 @@ func deleteStackCommand() *cobra.Command {
 		Use:   "delete-stack <stack-id>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Delete stack from list of available stacks",
-		RunE: runE(func(cmd *cobra.Command, args []string) error {
+		RunE: interceptError(func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
 			cfg, err := config.NewDefault()
 			if err != nil {
@@ -316,7 +316,7 @@ func deleteStackCommand() *cobra.Command {
 			if err := cfg.Delete(args[0]); err != nil {
 				return err
 			}
-			logger.Info("Stack %s deleted", style.Emphasized(args[0]))
+			logger.Info("Stack %s deleted", style.Identifier(args[0]))
 			return nil
 		}),
 	}
@@ -328,8 +328,8 @@ func versionCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
 		Args:  cobra.NoArgs,
-		Short: "Show current pack version",
-		RunE: runE(func(cmd *cobra.Command, args []string) error {
+		Short: "Show current `pack` version",
+		RunE: interceptError(func(cmd *cobra.Command, args []string) error {
 			logger.Info(strings.TrimSpace(Version))
 			return nil
 		}),
@@ -356,7 +356,7 @@ func addHelpFlag(cmd *cobra.Command, commandName string) {
 	cmd.Flags().BoolP("help", "h", false, "Help for "+commandName)
 }
 
-func runE(f func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) error {
+func interceptError(f func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
 		cmd.SilenceUsage = true
@@ -370,5 +370,5 @@ func runE(f func(cmd *cobra.Command, args []string) error) func(*cobra.Command, 
 }
 
 func multiValueHelp(name string) string {
-	return fmt.Sprintf(",\nrepeat for each %s in order,\nor supply once by comma-separated list", name)
+	return fmt.Sprintf("\nRepeat for each %s in order,\nor supply once by comma-separated list", name)
 }
