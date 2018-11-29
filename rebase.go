@@ -3,12 +3,12 @@ package pack
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/image"
 
 	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/style"
 )
 
 type RebaseConfig struct {
@@ -17,7 +17,7 @@ type RebaseConfig struct {
 }
 
 type RebaseFactory struct {
-	Log          *log.Logger
+	Logger       *Logger
 	Config       *config.Config
 	ImageFactory ImageFactory
 }
@@ -89,11 +89,11 @@ func (f *RebaseFactory) Rebase(cfg RebaseConfig) error {
 		return err
 	}
 
-	digest, err := cfg.Image.Save()
+	_, err = cfg.Image.Save()
 	if err != nil {
 		return err
 	}
-	f.Log.Printf("Successfully replaced %s with %s\n", cfg.Image.Name(), digest)
+	f.Logger.Info("Successfully rebased image %s", style.Identifier(cfg.Image.Name()))
 	return nil
 }
 
@@ -103,7 +103,7 @@ func (f *RebaseFactory) runImageName(stackID, repoName string) (string, error) {
 		return "", err
 	}
 	if len(stack.RunImages) == 0 {
-		return "", fmt.Errorf(`Invalid stack: stack "%s" requies at least one build image`, stack.ID)
+		return "", fmt.Errorf("invalid stack: stack %s requies at least one run image", style.Identifier(stack.ID))
 	}
 	registry, err := config.Registry(repoName)
 	if err != nil {

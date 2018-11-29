@@ -3,7 +3,6 @@ package pack_test
 import (
 	"bytes"
 	"encoding/json"
-	"log"
 	"testing"
 
 	"github.com/buildpack/lifecycle"
@@ -30,14 +29,15 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 			mockController   *gomock.Controller
 			mockImageFactory *mocks.MockImageFactory
 			factory          pack.RebaseFactory
-			buf              bytes.Buffer
+			outBuf           bytes.Buffer
+			errBuff          bytes.Buffer
 		)
 		it.Before(func() {
 			mockController = gomock.NewController(t)
 			mockImageFactory = mocks.NewMockImageFactory(mockController)
 
 			factory = pack.RebaseFactory{
-				Log: log.New(&buf, "", log.LstdFlags),
+				Logger: pack.NewLogger(&outBuf, &errBuff, false, false),
 				Config: &config.Config{
 					DefaultStackID: "some.default.stack",
 					Stacks: []config.Stack{
@@ -153,7 +153,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				}
 				err := factory.Rebase(rebaseConfig)
 				h.AssertNil(t, err)
-				h.AssertContains(t, buf.String(), "Successfully replaced my-org/my-repo with some-digest\n")
+				h.AssertContains(t, outBuf.String(), "Successfully rebased image my-org/my-repo\n")
 			})
 		})
 	})
