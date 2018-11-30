@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net/http"
 	"path/filepath"
@@ -39,7 +38,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockController   *gomock.Controller
 			mockImageFactory *mocks.MockImageFactory
 			factory          pack.BuilderFactory
-			buf              bytes.Buffer
+			outBuf           bytes.Buffer
+			errBuf           bytes.Buffer
 		)
 		it.Before(func() {
 			mockController = gomock.NewController(t)
@@ -73,7 +73,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			factory = pack.BuilderFactory{
 				FS:           &fs.FS{},
-				Log:          log.New(&buf, "", log.LstdFlags),
+				Logger:       pack.NewLogger(&outBuf, &errBuf, false, false),
 				Config:       cfg,
 				ImageFactory: mockImageFactory,
 			}
@@ -91,24 +91,6 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				config, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
 					RepoName:        "some/image",
-					BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
-				})
-				if err != nil {
-					t.Fatalf("error creating builder config: %s", err)
-				}
-				h.AssertSameInstance(t, config.Repo, mockBaseImage)
-				checkBuildpacks(t, config.Buildpacks)
-				checkGroups(t, config.Groups)
-				h.AssertEq(t, config.BuilderDir, "testdata")
-			})
-
-			it("select the build image with matching registry", func() {
-				mockBaseImage := mocks.NewMockImage(mockController)
-				mockImageFactory.EXPECT().NewLocal("registry.com/build/image", true).Return(mockBaseImage, nil)
-				mockBaseImage.EXPECT().Rename("registry.com/some/image")
-
-				config, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
-					RepoName:        "registry.com/some/image",
 					BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
 				})
 				if err != nil {
@@ -151,23 +133,6 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			it("fails if there is no build image for the stack", func() {
-				factory.Config = &config.Config{
-					DefaultStackID: "some.bad.stack",
-					Stacks: []config.Stack{
-						{
-							ID: "some.bad.stack",
-						},
-					},
-				}
-				_, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
-					RepoName:        "some/image",
-					BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
-					NoPull:          true,
-				})
-				h.AssertError(t, err, `Invalid stack: stack "some.bad.stack" requires at least one build image`)
-			})
-
 			it("uses the build image that matches the repoName registry", func() {})
 
 			when("-s flag is provided", func() {
@@ -196,7 +161,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						NoPull:          true,
 						StackID:         "some.missing.stack",
 					})
-					h.AssertError(t, err, `Missing stack: stack with id "some.missing.stack" not found in pack config.toml`)
+					h.AssertError(t, err, "stack some.missing.stack does not exist")
 				})
 			})
 
@@ -238,8 +203,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					})
 					h.AssertNil(t, err)
 
-					h.AssertContains(t, buf.String(), "Successfully created builder image: myorg/mybuilder")
-					h.AssertContains(t, buf.String(), `Tip: Run "pack build <image name> --builder <builder image> --path <app source code>" to use this builder`)
+					h.AssertContains(t, outBuf.String(), "Created builder image myorg/mybuilder")
+					h.AssertContains(t, outBuf.String(), "Tip: Run `pack build <image-name> --builder myorg/mybuilder` to use this builder")
 				})
 			})
 		})

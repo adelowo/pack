@@ -4,9 +4,9 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"fmt"
+	"github.com/buildpack/pack/style"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -33,7 +33,7 @@ type BuilderConfig struct {
 }
 
 type BuilderFactory struct {
-	Log          *log.Logger
+	Logger       *Logger
 	FS           FS
 	Config       *config.Config
 	ImageFactory ImageFactory
@@ -204,9 +204,9 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 		return err
 	}
 
-	f.Log.Println("Successfully created builder image:", config.Repo.Name())
-	f.Log.Println("")
-	f.Log.Println(`Tip: Run "pack build <image name> --builder <builder image> --path <app source code>" to use this builder`)
+	imageName := config.Repo.Name()
+	f.Logger.Info("Created builder image %s", style.Identifier(imageName))
+	f.Logger.Tip("Run `pack build <image-name> --builder %s` to use this builder", style.Identifier(imageName))
 
 	return nil
 }
@@ -320,10 +320,10 @@ func (f *BuilderFactory) downloadAsStream(uri string, etag string) (io.Reader, s
 		return nil, "", err
 	} else {
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-			f.Log.Printf("Downloading from %q\n", uri)
+			f.Logger.Verbose("Downloading from %q\n", uri)
 			return resp.Body, resp.Header.Get("Etag"), nil
 		} else if resp.StatusCode == 304 {
-			f.Log.Printf("Using cached version of %q\n", uri)
+			f.Logger.Verbose("Using cached version of %q\n", uri)
 			return nil, etag, nil
 		} else {
 			return nil, "", fmt.Errorf("could not download from %q, code http status %d", uri, resp.StatusCode)

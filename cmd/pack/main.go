@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/buildpack/pack/style"
 	"github.com/fatih/color"
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -153,14 +152,14 @@ func rebaseCommand() *cobra.Command {
 func createBuilderCommand() *cobra.Command {
 	flags := pack.CreateBuilderFlags{}
 	cmd := &cobra.Command{
-		Use:   "create-builder <image-name> --builder-config <builder-toml-path>",
+		Use:   "create-builder <image-name> --builder-config <builder-config-path>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Create builder image",
 		RunE: logError(func(cmd *cobra.Command, args []string) error {
 			flags.RepoName = args[0]
 
 			if runtime.GOOS == "windows" {
-				return fmt.Errorf("create builder is not implemented on windows")
+				return fmt.Errorf("%s is not implemented on Windows", style.Identifier("create-builder"))
 			}
 
 			cfg, err := config.NewDefault()
@@ -173,7 +172,7 @@ func createBuilderCommand() *cobra.Command {
 			}
 			builderFactory := pack.BuilderFactory{
 				FS:           &fs.FS{},
-				Log:          log.New(os.Stdout, "", log.LstdFlags),
+				Logger:       logger,
 				Config:       cfg,
 				ImageFactory: imageFactory,
 			}
