@@ -294,10 +294,8 @@ func updateStackCommand() *cobra.Command {
 			return nil
 		}),
 	}
-	cmd.Flags().StringVarP(&flags.BuildImage, "build-image", "b", "", "Build image to associate with stack (required)")
-	cmd.MarkFlagRequired("build-image")
-	cmd.Flags().StringSliceVarP(&flags.RunImages, "run-image", "r", nil, "Run image to associate with stack (required)"+multiValueHelp("run image"))
-	cmd.MarkFlagRequired("run-image")
+	cmd.Flags().StringVarP(&flags.BuildImage, "build-image", "b", "", "Build image to associate with stack")
+	cmd.Flags().StringSliceVarP(&flags.RunImages, "run-image", "r", nil, "Run image to associate with stack"+multiValueHelp("run image"))
 	addHelpFlag(cmd, "update-stack")
 	return cmd
 }

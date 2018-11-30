@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"github.com/buildpack/pack/style"
 	"os"
@@ -77,7 +78,7 @@ func (c *Config) save() error {
 func (c *Config) migrateBuildImagesToSingularBuildImage() {
 	for s := range c.Stacks {
 		stack := &c.Stacks[s]
-		if stack.BuildImage == "" {
+		if stack.BuildImage == "" && len(stack.BuildImages) > 0 {
 			stack.BuildImage = stack.BuildImages[0]
 		}
 		stack.BuildImages = nil
@@ -139,8 +140,13 @@ func (c *Config) Add(stack Stack) error {
 func (c *Config) Update(stackID string, newStack Stack) error {
 	for i, stk := range c.Stacks {
 		if stk.ID == stackID {
-			stk.BuildImage = newStack.BuildImage
+			if newStack.BuildImage == "" && len(newStack.RunImages) == 0 {
+				return errors.New("no build image or run image(s) specified")
+			}
 
+			if newStack.BuildImage != "" {
+				stk.BuildImage = newStack.BuildImage
+			}
 			if len(newStack.RunImages) > 0 {
 				stk.RunImages = newStack.RunImages
 			}
