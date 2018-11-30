@@ -66,7 +66,7 @@ func AssertError(t *testing.T, actual error, expected string) {
 func AssertContains(t *testing.T, actual, expected string) {
 	t.Helper()
 	if !strings.Contains(actual, expected) {
-		t.Fatalf("Expected: '%s' inside '%s'", expected, actual)
+		t.Fatalf("Expected: '%s' to contain '%s'", actual, expected)
 	}
 }
 
