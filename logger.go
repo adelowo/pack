@@ -42,14 +42,14 @@ func (l *Logger) Info(format string, a ...interface{}) {
 	l.printf(l.out, true, format, a...)
 }
 
-func (l *Logger) Error(format string, a ...interface{}) {
-	l.printf(l.err, true, style.Error("ERROR: ")+format, a...)
-}
-
-func (l *Logger) Debug(format string, a ...interface{}) {
+func (l *Logger) Verbose(format string, a ...interface{}) {
 	if l.verbose {
 		l.printf(l.out, true, format, a...)
 	}
+}
+
+func (l *Logger) Error(format string, a ...interface{}) {
+	l.printf(l.err, true, style.Error("ERROR: ")+format, a...)
 }
 
 func (l *Logger) Tip(format string, a ...interface{}) {

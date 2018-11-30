@@ -27,14 +27,14 @@ func testLogger(t *testing.T, when spec.G, it spec.S) {
 		errBuff bytes.Buffer
 	)
 
-	when("debug", func() {
-		when("logger has debug enabled", func() {
+	when("verbose", func() {
+		when("logger has verbose enabled", func() {
 			it.Before(func() {
 				logger = pack.NewLogger(&outBuf, &errBuff, true, false)
 			})
 
 			it("shows verbose output", func() {
-				logger.Debug("Some verbose output")
+				logger.Verbose("Some verbose output")
 
 				h.AssertEq(t, outBuf.String(), "Some verbose output\n")
 			})
@@ -46,7 +46,7 @@ func testLogger(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("does not show verbose output", func() {
-				logger.Debug("Some verbose output")
+				logger.Verbose("Some verbose output")
 
 				h.AssertEq(t, outBuf.String(), "")
 			})
@@ -82,7 +82,7 @@ func testLogger(t *testing.T, when spec.G, it spec.S) {
 
 	when("styling", func() {
 		it.Before(func() {
-			logger = pack.NewLogger(&outBuf, &errBuff, false, false)
+			logger = pack.NewLogger(&outBuf, &errBuff, true, false)
 		})
 
 		when("#Info", func() {
@@ -90,6 +90,14 @@ func testLogger(t *testing.T, when spec.G, it spec.S) {
 				logger.Info("This is some info")
 
 				h.AssertEq(t, outBuf.String(), "This is some info\n")
+			})
+		})
+
+		when("#Verbose", func() {
+			it("displays unstyled verbose message", func() {
+				logger.Verbose("This is some verbose text")
+
+				h.AssertEq(t, outBuf.String(), "This is some verbose text\n")
 			})
 		})
 
