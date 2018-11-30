@@ -55,15 +55,15 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("failed to create config: %v", err)
 			}
 			if err = cfg.Add(config.Stack{
-				ID:          "some.default.stack",
-				BuildImages: []string{"default/build", "registry.com/build/image"},
-				RunImages:   []string{"default/run"},
+				ID:         "some.default.stack",
+				BuildImage: "default/build",
+				RunImages:  []string{"default/run"},
 			}); err != nil {
 				t.Fatalf("failed to create config: %v", err)
 			}
 			if err = cfg.Add(config.Stack{ID: "some.other.stack",
-				BuildImages: []string{"other/build"},
-				RunImages:   []string{"other/run"},
+				BuildImage: "other/build",
+				RunImages:  []string{"other/run"},
 			}); err != nil {
 				t.Fatalf("failed to create config: %v", err)
 			}
