@@ -3,6 +3,8 @@ package pack_test
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/buildpack/pack/logging"
+	"github.com/fatih/color"
 	"testing"
 
 	"github.com/buildpack/lifecycle"
@@ -17,6 +19,7 @@ import (
 )
 
 func TestRebase(t *testing.T) {
+	color.NoColor = true
 	spec.Run(t, "rebase", testRebase, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -37,7 +40,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 			mockImageFactory = mocks.NewMockImageFactory(mockController)
 
 			factory = pack.RebaseFactory{
-				Logger: pack.NewLogger(&outBuf, &errBuff, false, false),
+				Logger: logging.NewLogger(&outBuf, &errBuff, false, false),
 				Config: &config.Config{
 					DefaultStackID: "some.default.stack",
 					Stacks: []config.Stack{
@@ -153,7 +156,6 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				}
 				err := factory.Rebase(rebaseConfig)
 				h.AssertNil(t, err)
-				h.AssertContains(t, outBuf.String(), "Successfully rebased image my-org/my-repo\n")
 			})
 		})
 	})

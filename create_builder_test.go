@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/buildpack/pack/logging"
+	"github.com/fatih/color"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -26,6 +28,7 @@ import (
 )
 
 func TestCreateBuilder(t *testing.T) {
+	color.NoColor = true
 	if runtime.GOOS == "windows" {
 		t.Skip("create builder is not implemented on windows")
 	}
@@ -73,7 +76,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			factory = pack.BuilderFactory{
 				FS:           &fs.FS{},
-				Logger:       pack.NewLogger(&outBuf, &errBuf, false, false),
+				Logger:       logging.NewLogger(&outBuf, &errBuf, true, false),
 				Config:       cfg,
 				ImageFactory: mockImageFactory,
 			}
@@ -161,7 +164,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						NoPull:          true,
 						StackID:         "some.missing.stack",
 					})
-					h.AssertError(t, err, "stack some.missing.stack does not exist")
+					h.AssertError(t, err, "stack 'some.missing.stack' does not exist")
 				})
 			})
 
@@ -189,11 +192,10 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("#Create", func() {
 			when("successful", func() {
-				it("logs usage tip", func() {
+				it("returns no errors", func() {
 					mockImage := mocks.NewMockImage(mockController)
 					mockImage.EXPECT().AddLayer(gomock.Any()).AnyTimes()
 					mockImage.EXPECT().Save()
-					mockImage.EXPECT().Name().Return("myorg/mybuilder")
 
 					err := factory.Create(pack.BuilderConfig{
 						Repo:       mockImage,
@@ -202,9 +204,6 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						BuilderDir: "",
 					})
 					h.AssertNil(t, err)
-
-					h.AssertContains(t, outBuf.String(), "Created builder image myorg/mybuilder")
-					h.AssertContains(t, outBuf.String(), "Tip: Run `pack build <image-name> --builder myorg/mybuilder` to use this builder")
 				})
 			})
 		})
@@ -340,7 +339,7 @@ buildpacks = [
 						serverReady = true
 						break
 					}
-					fmt.Printf("Waiting for server to become ready on %s. Currently %v\n", server.Addr, err)
+					t.Logf("Waiting for server to become ready on %s. Currently %v\n", server.Addr, err)
 					time.Sleep(1 * time.Second)
 				}
 				if !serverReady {

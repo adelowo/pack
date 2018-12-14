@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"github.com/fatih/color"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 )
 
 func TestConfig(t *testing.T) {
+	color.NoColor = true
 	spec.Run(t, "config", testConfig, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -169,7 +171,7 @@ default-builder = "packs/samples"
 
 [[stacks]]
   id = "io.buildpacks.stacks.bionic"
-  build-images = ["packs/build"]
+  build-image = "packs/build"
   run-images = ["some-other/run", "packs/run"]
 `))
 			})
@@ -185,19 +187,52 @@ default-builder = "packs/samples"
 				h.AssertContains(t, string(b), strings.TrimSpace(`
 [[stacks]]
   id = "io.buildpacks.stacks.bionic"
-  build-images = ["packs/build:v3alpha2"]
+  build-image = "packs/build:v3alpha2"
   run-images = ["some-other/run", "packs/run:v3alpha2"]
 `))
 
 				h.AssertEq(t, len(subject.Stacks), 1)
 				h.AssertEq(t, subject.Stacks[0].ID, "io.buildpacks.stacks.bionic")
-				h.AssertEq(t, len(subject.Stacks[0].BuildImages), 1)
-				h.AssertEq(t, subject.Stacks[0].BuildImages[0], "packs/build:v3alpha2")
+				h.AssertEq(t, subject.Stacks[0].BuildImage, "packs/build:v3alpha2")
 				h.AssertEq(t, len(subject.Stacks[0].RunImages), 2)
 				h.AssertEq(t, subject.Stacks[0].RunImages[0], "some-other/run")
 				h.AssertEq(t, subject.Stacks[0].RunImages[1], "packs/run:v3alpha2")
 				h.AssertEq(t, subject.DefaultStackID, "io.buildpacks.stacks.bionic")
 				h.AssertEq(t, subject.DefaultBuilder, "packs/samples:v3alpha2")
+			})
+		})
+
+		when("config.toml has an outdated format", func() {
+			it.Before(func() {
+				w, err := os.Create(filepath.Join(tmpDir, "config.toml"))
+				h.AssertNil(t, err)
+				defer w.Close()
+				w.Write([]byte(`
+default-builder = "packs/samples"
+
+[[stacks]]
+  id = "my.stack"
+  build-images = ["some-other/build"]
+  run-images = ["some-other/run"]
+`))
+			})
+
+			it("modifies old defaults", func() {
+				subject, err := config.New(tmpDir)
+				h.AssertNil(t, err)
+
+				b, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
+				h.AssertNil(t, err)
+				h.AssertContains(t, string(b), strings.TrimSpace(`
+[[stacks]]
+  id = "my.stack"
+  build-image = "some-other/build"
+  run-images = ["some-other/run"]
+`))
+
+				h.AssertEq(t, subject.Stacks[0].ID, "my.stack")
+				h.AssertEq(t, subject.Stacks[0].BuildImage, "some-other/build")
+				h.AssertEq(t, len(subject.Stacks[0].BuildImages), 0)
 			})
 		})
 	})

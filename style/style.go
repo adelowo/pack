@@ -1,11 +1,23 @@
 package style
 
-import "github.com/fatih/color"
+import (
+	"fmt"
+	"github.com/fatih/color"
+)
 
-var Identifier = color.New(color.FgHiWhite, color.Bold).SprintFunc()
+var Symbol = func(format string, a ...interface{}) string {
+	if color.NoColor {
+		format = fmt.Sprintf("'%s'", format)
+	}
+	return color.New(color.FgMagenta).Sprintf(format, a...)
+}
 
 var Tip = color.New(color.FgHiGreen, color.Bold).SprintfFunc()
 
 var Error = color.New(color.FgRed, color.Bold).SprintfFunc()
 
-var Separator = color.HiCyanString
+var Step = func(format string, a ...interface{}) string {
+	return color.HiCyanString("===> "+format, a...)
+}
+
+var Prefix = color.HiCyanString

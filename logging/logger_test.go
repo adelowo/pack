@@ -1,7 +1,9 @@
-package pack_test
+package logging_test
 
 import (
 	"bytes"
+	"fmt"
+	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 	"regexp"
 	"testing"
@@ -10,27 +12,26 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
 func TestLogger(t *testing.T) {
 	color.NoColor = false // IMPORTANT: Keep this to avoid false positive tests
-	spec.Run(t, "Logger", testLogger, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "logging", testLogging, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testLogger(t *testing.T, when spec.G, it spec.S) {
+func testLogging(t *testing.T, when spec.G, it spec.S) {
 
 	var (
-		logger  *pack.Logger
-		outBuf  bytes.Buffer
-		errBuff bytes.Buffer
+		logger *logging.Logger
+		outBuf bytes.Buffer
+		errBuf bytes.Buffer
 	)
 
-	when("verbose", func() {
+	when("verbosity", func() {
 		when("logger has verbose enabled", func() {
 			it.Before(func() {
-				logger = pack.NewLogger(&outBuf, &errBuff, true, false)
+				logger = logging.NewLogger(&outBuf, &errBuf, true, false)
 			})
 
 			it("shows verbose output", func() {
@@ -38,11 +39,23 @@ func testLogger(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, outBuf.String(), "Some verbose output\n")
 			})
+
+			it("returns real out writer", func() {
+				writer := logger.VerboseWriter()
+				writer.Write([]byte("some-text\n"))
+				h.AssertEq(t, string(outBuf.Bytes()), "some-text\n")
+			})
+
+			it("returns real err writer", func() {
+				writer := logger.VerboseErrorWriter()
+				writer.Write([]byte("some-text\n"))
+				h.AssertEq(t, errBuf.String(), "some-text\n")
+			})
 		})
 
-		when("logger has debug disabled", func() {
+		when("logger has verbose disabled", func() {
 			it.Before(func() {
-				logger = pack.NewLogger(&outBuf, &errBuff, false, false)
+				logger = logging.NewLogger(&outBuf, &errBuf, false, false)
 			})
 
 			it("does not show verbose output", func() {
@@ -50,26 +63,38 @@ func testLogger(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, outBuf.String(), "")
 			})
+
+			it("returns discard out writer", func() {
+				writer := logger.VerboseWriter()
+				writer.Write([]byte("some-text"))
+				h.AssertEq(t, outBuf.String(), "")
+			})
+
+			it("returns discard err writer", func() {
+				writer := logger.VerboseErrorWriter()
+				writer.Write([]byte("some-text\n"))
+				h.AssertEq(t, errBuf.String(), "")
+			})
 		})
 	})
 
 	when("timestamps", func() {
 		when("logger has timestamps enabled", func() {
 			it.Before(func() {
-				logger = pack.NewLogger(&outBuf, &errBuff, false, true)
+				logger = logging.NewLogger(&outBuf, &errBuf, false, true)
 			})
 
 			it("prefixes logging with timestamp", func() {
 				logger.Info("Some text")
 
 				h.AssertMatch(t, outBuf.String(), regexp.MustCompile(
-					`^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} \Q`+style.Separator("| ")+`\ESome text`))
+					`^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} \Q`+style.Prefix("| ")+`\ESome text`))
 			})
 		})
 
 		when("logger has timestamps disabled", func() {
 			it.Before(func() {
-				logger = pack.NewLogger(&outBuf, &errBuff, false, false)
+				logger = logging.NewLogger(&outBuf, &errBuf, false, false)
 			})
 
 			it("does not prefix logging with timestamp", func() {
@@ -82,7 +107,7 @@ func testLogger(t *testing.T, when spec.G, it spec.S) {
 
 	when("styling", func() {
 		it.Before(func() {
-			logger = pack.NewLogger(&outBuf, &errBuff, true, false)
+			logger = logging.NewLogger(&outBuf, &errBuf, true, false)
 		})
 
 		when("#Info", func() {
@@ -105,7 +130,7 @@ func testLogger(t *testing.T, when spec.G, it spec.S) {
 			it("displays styled error message to error buffer", func() {
 				logger.Error("Something went wrong!")
 
-				h.AssertEq(t, errBuff.String(), style.Error("ERROR: ")+"Something went wrong!\n")
+				h.AssertEq(t, errBuf.String(), style.Error("ERROR: ")+"Something went wrong!\n")
 			})
 		})
 
@@ -115,6 +140,14 @@ func testLogger(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, outBuf.String(), style.Tip("Tip: ")+"This is a tip\n")
 			})
+		})
+	})
+
+	when("#WithPrefix", func() {
+		it("returns prefixed writer", func() {
+			writer := logging.NewLogger(&outBuf, &errBuf, true, false).VerboseWriter()
+			writer.WithPrefix("some-prefix").Write([]byte("some-text\n"))
+			h.AssertEq(t, outBuf.String(), fmt.Sprintf("[%s] some-text\n", style.Prefix("some-prefix")))
 		})
 	})
 }

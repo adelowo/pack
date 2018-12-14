@@ -3,8 +3,8 @@ package pack
 import (
 	"context"
 	"fmt"
-	"io"
-	"log"
+	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/style"
 	"strconv"
 	"strings"
 
@@ -25,9 +25,7 @@ type RunConfig struct {
 	// All below are from BuildConfig
 	RepoName string
 	Cli      Docker
-	Stdout   io.Writer
-	Stderr   io.Writer
-	Log      *log.Logger
+	Logger   *logging.Logger
 }
 
 func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
@@ -41,16 +39,14 @@ func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
 		// All below are from BuildConfig
 		RepoName: bc.RepoName,
 		Cli:      bc.Cli,
-		Stdout:   bc.Stdout,
-		Stderr:   bc.Stderr,
-		Log:      bc.Log,
+		Logger:   bc.Logger,
 	}
 
 	return rc, nil
 }
 
-func Run(appDir, buildImage, runImage string, ports []string, makeStopCh func() <-chan struct{}) error {
-	bf, err := DefaultBuildFactory()
+func Run(logger *logging.Logger, appDir, buildImage, runImage string, ports []string, makeStopCh func() <-chan struct{}) error {
+	bf, err := DefaultBuildFactory(logger)
 	if err != nil {
 		return err
 	}
@@ -76,7 +72,7 @@ func (r *RunConfig) Run(makeStopCh func() <-chan struct{}) error {
 		return err
 	}
 
-	fmt.Println("*** RUNNING:")
+	r.Logger.Verbose(style.Step("RUNNING"))
 	if r.Ports == nil {
 		r.Ports, err = r.exposedPorts(ctx, r.RepoName)
 		if err != nil {
@@ -97,7 +93,7 @@ func (r *RunConfig) Run(makeStopCh func() <-chan struct{}) error {
 		PortBindings: portBindings,
 	}, nil, "")
 
-	logContainerListening(r.Log, portBindings)
+	logContainerListening(r.Logger, portBindings)
 	running := true
 	stopCh := makeStopCh()
 	go func() {
@@ -107,7 +103,7 @@ func (r *RunConfig) Run(makeStopCh func() <-chan struct{}) error {
 			Force: true,
 		})
 	}()
-	if err = r.Cli.RunContainer(ctx, ctr.ID, r.Stdout, r.Stderr); err != nil && running {
+	if err = r.Cli.RunContainer(ctx, ctr.ID, r.Logger.VerboseWriter(), r.Logger.VerboseErrorWriter()); err != nil && running {
 		return errors.Wrap(err, "run container")
 	}
 
@@ -139,7 +135,7 @@ func parsePorts(ports []string) (nat.PortSet, nat.PortMap, error) {
 	return nat.ParsePortSpecs(ports)
 }
 
-func logContainerListening(log *log.Logger, portBindings nat.PortMap) {
+func logContainerListening(logger *logging.Logger, portBindings nat.PortMap) {
 	// TODO handle case with multiple ports, for now when there is more than
 	// one port we assume you know what you're doing and don't need guidance
 	if len(portBindings) == 1 {
@@ -152,7 +148,7 @@ func logContainerListening(log *log.Logger, portBindings nat.PortMap) {
 					host = "localhost"
 				}
 				// TODO the service may not be http based
-				log.Printf("Starting container listening at http://%s:%s/\n", host, port)
+				logger.Info("Starting container listening at http://%s:%s/\n", host, port)
 			}
 		}
 	}

@@ -41,11 +41,6 @@ In the following example, an app image is created from Node.js application sourc
 ```bash
 $ cd /path/to/node/app
 $ pack build my-app:my-tag
-
-# ... Detect, analyze and build output
-
-Successfully built 2452b4b1fce1
-Successfully tagged my-app:my-tag
 ```
 
 In this case, the default [builder](#working-with-builders-using-create-builder) is used, and an appropriate buildpack
@@ -67,18 +62,7 @@ user.
 ```bash
 $ cd /path/to/node/app
 $ pack build my-app:my-tag --buildpack path/to/some/buildpack
-
-# ...
-*** DETECTING WITH MANUALLY-PROVIDED GROUP:
-2018/10/29 18:31:05 Group: Name Of Some Buildpack: pass
-# ...
-
-Successfully built 2452b4b1fce1
-Successfully tagged my-app:my-tag
 ```
-
-The message `DETECTING WITH MANUALLY-PROVIDED GROUP` indicates that the buildpack was chosen by the user, rather than
-by the automated detection process.
 
 The `--buildpack` parameter can be
 - a path to a directory
@@ -175,9 +159,6 @@ Running `create-builder` while supplying this configuration file will produce th
 
 ```bash
 $ pack create-builder my-builder:my-tag --builder-config path/to/builder.toml
-
-2018/10/29 15:35:47 Pulling builder base image packs/build
-2018/10/29 15:36:06 Successfully created builder image: my-builder:my-tag
 ```
 
 Like [`build`](#building-app-images-using-build), `create-builder` has a `--publish` flag that can be used to publish

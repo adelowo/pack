@@ -40,17 +40,7 @@ func New(path string) (*Config, error) {
 		return nil, err
 	}
 
-	if config.DefaultStackID == "" {
-		config.DefaultStackID = "io.buildpacks.stacks.bionic"
-	}
-	if config.DefaultBuilder == "" || config.DefaultBuilder == "packs/samples" {
-		config.DefaultBuilder = "packs/samples:v3alpha2"
-	}
-	upgradeStack(config, Stack{
-		ID:         "io.buildpacks.stacks.bionic",
-		BuildImage: "packs/build:v3alpha2",
-		RunImages:  []string{"packs/run:v3alpha2"},
-	})
+	config.migrate()
 
 	config.configPath = configPath
 
@@ -74,17 +64,6 @@ func (c *Config) save() error {
 	return toml.NewEncoder(w).Encode(c)
 }
 
-// TODO: Eventually remove this, once most users are likely migrated
-func (c *Config) migrateBuildImagesToSingularBuildImage() {
-	for s := range c.Stacks {
-		stack := &c.Stacks[s]
-		if stack.BuildImage == "" && len(stack.BuildImages) > 0 {
-			stack.BuildImage = stack.BuildImages[0]
-		}
-		stack.BuildImages = nil
-	}
-}
-
 func previousConfig(path string) (*Config, error) {
 	configPath := filepath.Join(path, "config.toml")
 	config := &Config{}
@@ -96,34 +75,61 @@ func previousConfig(path string) (*Config, error) {
 	return config, nil
 }
 
-func upgradeStack(config *Config, stack Stack) {
-	// TODO: Eventually remove this, once most users are likely migrated
-	config.migrateBuildImagesToSingularBuildImage()
+func (c *Config) migrate() {
+	if c.DefaultStackID == "" {
+		c.DefaultStackID = "io.buildpacks.stacks.bionic"
+	}
+	if c.DefaultBuilder == "" || c.DefaultBuilder == "packs/samples" {
+		c.DefaultBuilder = "packs/samples:v3alpha2"
+	}
 
-	for _, stk := range config.Stacks {
-		if stk.ID == stack.ID {
-			if stk.BuildImage == "packs/build" {
-				stk.BuildImage = stack.BuildImage
-			}
+	initialStack := Stack{
+		ID:         "io.buildpacks.stacks.bionic",
+		BuildImage: "packs/build:v3alpha2",
+		RunImages:  []string{"packs/run:v3alpha2"},
+	}
 
-			for index, value := range stk.RunImages {
-				if value == "packs/run" {
-					stk.RunImages[index] = stack.RunImages[0]
-				}
-			}
-			return
+	c.migrateBuildImagesToSingularBuildImage()
+
+	s, err := c.Get(initialStack.ID)
+	if err == nil {
+		migrateInitialImages(s, initialStack.BuildImage, initialStack.RunImages[0])
+	} else {
+		c.Stacks = append(c.Stacks, initialStack)
+	}
+}
+
+// TODO: Eventually remove this, once most users are likely migrated
+func (c *Config) migrateBuildImagesToSingularBuildImage() {
+	for s := range c.Stacks {
+		stack := &c.Stacks[s]
+		if stack.BuildImage == "" && len(stack.BuildImages) > 0 {
+			stack.BuildImage = stack.BuildImages[0]
+		}
+		stack.BuildImages = nil
+	}
+}
+
+func migrateInitialImages(stack *Stack, buildImage, runImage string) {
+	if stack.BuildImage == "packs/build" {
+		stack.BuildImage = buildImage
+	}
+
+	for index, value := range stack.RunImages {
+		if value == "packs/run" {
+			stack.RunImages[index] = runImage
 		}
 	}
-	config.Stacks = append(config.Stacks, stack)
 }
 
 func (c *Config) Get(stackID string) (*Stack, error) {
 	if stackID == "" {
 		stackID = c.DefaultStackID
 	}
-	for _, stack := range c.Stacks {
+	for s := range c.Stacks {
+		stack := &c.Stacks[s]
 		if stack.ID == stackID {
-			return &stack, nil
+			return stack, nil
 		}
 	}
 	return nil, missingStackError(stackID)
@@ -131,30 +137,30 @@ func (c *Config) Get(stackID string) (*Stack, error) {
 
 func (c *Config) Add(stack Stack) error {
 	if _, err := c.Get(stack.ID); err == nil {
-		return fmt.Errorf("stack %s already exists", style.Identifier(stack.ID))
+		return fmt.Errorf("stack %s already exists", style.Symbol(stack.ID))
 	}
 	c.Stacks = append(c.Stacks, stack)
 	return c.save()
 }
 
 func (c *Config) Update(stackID string, newStack Stack) error {
-	for i, stk := range c.Stacks {
-		if stk.ID == stackID {
-			if newStack.BuildImage == "" && len(newStack.RunImages) == 0 {
-				return errors.New("no build image or run image(s) specified")
-			}
-
-			if newStack.BuildImage != "" {
-				stk.BuildImage = newStack.BuildImage
-			}
-			if len(newStack.RunImages) > 0 {
-				stk.RunImages = newStack.RunImages
-			}
-			c.Stacks[i] = stk
-			return c.save()
-		}
+	stk, err := c.Get(stackID)
+	if err != nil {
+		return err
 	}
-	return missingStackError(stackID)
+
+	if newStack.BuildImage == "" && len(newStack.RunImages) == 0 {
+		return errors.New("no build image or run image(s) specified")
+	}
+
+	if newStack.BuildImage != "" {
+		stk.BuildImage = newStack.BuildImage
+	}
+	if len(newStack.RunImages) > 0 {
+		stk.RunImages = newStack.RunImages
+	}
+
+	return c.save()
 }
 
 func (c *Config) Delete(stackID string) error {
@@ -169,14 +175,15 @@ func (c *Config) Delete(stackID string) error {
 	}
 	return missingStackError(stackID)
 }
+
 func (c *Config) SetDefaultStack(stackID string) error {
-	for _, s := range c.Stacks {
-		if s.ID == stackID {
-			c.DefaultStackID = stackID
-			return c.save()
-		}
+	_, err := c.Get(stackID)
+	if err != nil {
+		return err
 	}
-	return missingStackError(stackID)
+
+	c.DefaultStackID = stackID
+	return c.save()
 }
 
 // Path returns the directory path where the config is stored as a toml file.
@@ -212,5 +219,5 @@ func Registry(imageName string) (string, error) {
 }
 
 func missingStackError(stackID string) error {
-	return fmt.Errorf(`stack %s does not exist`, style.Identifier(stackID))
+	return fmt.Errorf(`stack %s does not exist`, style.Symbol(stackID))
 }

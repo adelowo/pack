@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -77,7 +78,14 @@ func AssertSliceContains(t *testing.T, slice []string, value string) {
 			return
 		}
 	}
-	t.Fatalf("Expected: '%s' inside '%s'", value, slice)
+	t.Fatalf("Expected: '%s' to contain element '%s'", slice, value)
+}
+
+func AssertMatch(t *testing.T, actual string, expected *regexp.Regexp) {
+	t.Helper()
+	if !expected.Match([]byte(actual)) {
+		t.Fatal(cmp.Diff(actual, expected))
+	}
 }
 
 func AssertNil(t *testing.T, actual interface{}) {

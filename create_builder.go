@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"fmt"
+	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 	"io"
 	"io/ioutil"
@@ -33,7 +34,7 @@ type BuilderConfig struct {
 }
 
 type BuilderFactory struct {
-	Logger       *Logger
+	Logger       *logging.Logger
 	FS           FS
 	Config       *config.Config
 	ImageFactory ImageFactory
@@ -68,7 +69,7 @@ func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (Build
 	builderTOML := &BuilderTOML{}
 	_, err = toml.DecodeFile(flags.BuilderTomlPath, &builderTOML)
 	if err != nil {
-		return BuilderConfig{}, fmt.Errorf(`failed to decode builder config from file "%s": %s`, flags.BuilderTomlPath, err)
+		return BuilderConfig{}, fmt.Errorf(`failed to decode builder config from file %s: %s`, flags.BuilderTomlPath, err)
 	}
 	builderConfig.Groups = builderTOML.Groups
 
@@ -91,7 +92,7 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b Buildpack) (Bu
 		return Buildpack{}, err
 	}
 	switch asurl.Scheme {
-	case "",    // This is the only way to support relative filepaths
+	case "", // This is the only way to support relative filepaths
 		"file": // URIs with file:// protocol force the use of absolute paths. Host=localhost may be implied with file:///
 
 		path := asurl.Path
@@ -151,7 +152,7 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b Buildpack) (Bu
 
 		dir = cachedDir
 	default:
-		return Buildpack{}, fmt.Errorf("unsupported protocol in uri %q", b.URI)
+		return Buildpack{}, fmt.Errorf("unsupported protocol in URI %q", b.URI)
 	}
 
 	return Buildpack{
@@ -186,7 +187,7 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 	for _, buildpack := range config.Buildpacks {
 		tarFile, err := f.buildpackLayer(tmpDir, buildpack, config.BuilderDir)
 		if err != nil {
-			return fmt.Errorf(`failed generate layer for buildpack "%s": %s`, buildpack.ID, err)
+			return fmt.Errorf(`failed to generate layer for buildpack %s: %s`, style.Symbol(buildpack.ID), err)
 		}
 		if err := config.Repo.AddLayer(tarFile); err != nil {
 			return fmt.Errorf(`failed append buildpack layer to image: %s`, err)
@@ -203,11 +204,6 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 	if _, err := config.Repo.Save(); err != nil {
 		return err
 	}
-
-	imageName := config.Repo.Name()
-	f.Logger.Info("Created builder image %s", style.Identifier(imageName))
-	f.Logger.Tip("Run `pack build <image-name> --builder %s` to use this builder", style.Identifier(imageName))
-
 	return nil
 }
 
@@ -257,10 +253,10 @@ func (f *BuilderFactory) buildpackLayer(dest string, buildpack Buildpack, builde
 	}
 	bp := data.BP
 	if buildpack.ID != bp.ID {
-		return "", fmt.Errorf("buildpack ids did not match: %s != %s", buildpack.ID, bp.ID)
+		return "", fmt.Errorf("buildpack IDs did not match: %s != %s", buildpack.ID, bp.ID)
 	}
 	if bp.Version == "" {
-		return "", fmt.Errorf("buildpack.toml must provide version: %s", filepath.Join(buildpack.Dir, "!/buildpack.toml"))
+		return "", fmt.Errorf("buildpack.toml must provide version: %s", filepath.Join(buildpack.Dir, "buildpack.toml"))
 	}
 
 	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", buildpack.escapedID(), bp.Version))
@@ -277,6 +273,15 @@ func (f *BuilderFactory) buildpackData(buildpack Buildpack, dir string) (*Buildp
 		return nil, errors.Wrapf(err, "reading buildpack.toml from buildpack: %s", dir)
 	}
 	return data, nil
+}
+
+func (f *BuilderFactory) untarZ(r io.Reader, dir string) error {
+	gzr, err := gzip.NewReader(r)
+	if err != nil {
+		return errors.Wrapf(err, "could not unzip")
+	}
+	defer gzr.Close()
+	return f.FS.Untar(gzr, dir)
 }
 
 func (f *BuilderFactory) latestLayer(buildpacks []Buildpack, dest, builderDir string) (string, error) {
@@ -296,7 +301,7 @@ func (f *BuilderFactory) latestLayer(buildpacks []Buildpack, dest, builderDir st
 			}
 			err = os.Symlink(filepath.Join("/", "buildpacks", bp.escapedID(), data.BP.Version), filepath.Join(tmpDir, bp.escapedID(), "latest"))
 			if err != nil {
-				fmt.Println("E")
+				return "", err
 			}
 		}
 	}
@@ -329,13 +334,4 @@ func (f *BuilderFactory) downloadAsStream(uri string, etag string) (io.Reader, s
 			return nil, "", fmt.Errorf("could not download from %q, code http status %d", uri, resp.StatusCode)
 		}
 	}
-}
-
-func (f *BuilderFactory) untarZ(r io.Reader, dir string) error {
-	gzr, err := gzip.NewReader(r)
-	if err != nil {
-		return errors.Wrapf(err, "could not unzip")
-	}
-	defer gzr.Close()
-	return f.FS.Untar(gzr, dir)
 }
